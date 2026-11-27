@@ -106,38 +106,81 @@ def format_models(models, limit=18):
     return "\n".join(items)
 
 def footer():
-    return '\n\n<a href="https://github.com/harryin09-labs/openrouter-free-model-monitor">GitHub monitor</a> | <a href="' + CATALOG + '">OpenRouter free models</a>'
+    return (
+        '\n\n━━━━━━━━━━━━━━━━━━━━\n'
+        'Sent By:- Github-'
+        '<a href="https://github.com/harryin09-labs/openrouter-free-model-monitor">'
+        'openrouter-free-model-monitor</a>'
+    )
+
 
 def daily_message(now, models, added, removed, changed, baseline):
     variants = sum(m["kind"] == "free_variant" for m in models)
-    lines = ["🤖 <b>OPENROUTER FREE MODEL MONITOR</b>", "📅 " + now.strftime("%d %B %Y"),
-             "", "📦 Total zero-price models: <b>" + str(len(models)) + "</b>",
-             "🆓 :free variants: <b>" + str(variants) + "</b>",
-             "💠 Other zero-price: <b>" + str(len(models) - variants) + "</b>",
-             "🟢 Added: <b>" + str(len(added)) + "</b> | 🔴 Removed: <b>" + str(len(removed)) +
-             "</b> | 🔄 Changed: <b>" + str(len(changed)) + "</b>"]
+    lines = [
+        "🤖 <b>OPENROUTER FREE MODEL MONITOR</b>",
+        "📅 " + now.strftime("%d %B %Y"),
+        "",
+        "━━━━━━━━━━━━━━━━━━━━",
+        "📊 <b>SUMMARY</b>",
+        "━━━━━━━━━━━━━━━━━━━━",
+        "",
+        "📦 Total Free Models Available Now: <b>" + str(len(models)) + "</b>",
+        "🆓 :free Variants: <b>" + str(variants) + "</b>",
+        "💠 Other Zero-Price Models: <b>" + str(len(models) - variants) + "</b>",
+        "",
+        "🟢 New Added: <b>" + str(len(added)) + "</b>",
+        "🔴 Removed / No Longer Free: <b>" + str(len(removed)) + "</b>",
+        "🔄 Renamed / Changed: <b>" + str(len(changed)) + "</b>",
+    ]
     if baseline:
-        lines.append("✅ Initial baseline created; existing models are not classified as new.")
+        lines.extend(["", "✅ Initial baseline created. Existing models are not classified as new."])
     if added:
-        lines.extend(["", "🟢 <b>NEW FREE MODELS</b>", format_models(added)])
+        lines.extend(["", "━━━━━━━━━━━━━━━━━━━━", "🟢 <b>NEW FREE MODELS</b>",
+                      "━━━━━━━━━━━━━━━━━━━━", "", format_models(added)])
     if removed:
-        lines.extend(["", "🔴 <b>REMOVED OR NO LONGER FREE</b>", format_models(removed)])
+        lines.extend(["", "━━━━━━━━━━━━━━━━━━━━", "🔴 <b>REMOVED / NO LONGER FREE</b>",
+                      "━━━━━━━━━━━━━━━━━━━━", "", format_models(removed)])
     if changed:
-        lines.extend(["", "🔄 <b>DETAILS CHANGED</b>", format_models(changed)])
+        lines.extend(["", "━━━━━━━━━━━━━━━━━━━━", "🔄 <b>RENAMED / CHANGED</b>",
+                      "━━━━━━━━━━━━━━━━━━━━", "", format_models(changed)])
     if not (added or removed or changed or baseline):
-        lines.append("✅ No changes detected.")
-    lines.append("ℹ️ Zero-price does not guarantee unrestricted account access.")
+        lines.extend(["", "✅ No model-list changes detected."])
+    lines.extend([
+        "",
+        "━━━━━━━━━━━━━━━━━━━━",
+        '🔗 <a href="' + CATALOG + '">View OpenRouter Free Models</a>',
+        "ℹ️ Zero-price does not guarantee unrestricted access.",
+    ])
     return "\n".join(lines) + footer()
+
 
 def weekly_message(now, models, hist):
     start = (now.date() - timedelta(days=6)).isoformat()
     recent = [r for r in hist if start <= r.get("date", "") <= now.date().isoformat()]
     def unique(key):
         return len({mid for r in recent for mid in r.get(key, [])})
-    return ("📅 <b>OPENROUTER WEEKLY SUMMARY</b>\n" + now.strftime("%d %B %Y") +
-            "\n📦 Current zero-price models: <b>" + str(len(models)) + "</b>" +
-            "\n🟢 Added: " + str(unique("added")) + "\n🔴 Removed: " +
-            str(unique("removed")) + "\n🔄 Changed: " + str(unique("changed")) + footer())
+    variants = sum(m["kind"] == "free_variant" for m in models)
+    lines = [
+        "📅 <b>OPENROUTER WEEKLY FREE-MODEL SUMMARY</b>",
+        "Week ending: " + now.strftime("%d %B %Y"),
+        "",
+        "━━━━━━━━━━━━━━━━━━━━",
+        "📊 <b>WEEKLY SUMMARY</b>",
+        "━━━━━━━━━━━━━━━━━━━━",
+        "",
+        "📦 Total Free Models Available Now: <b>" + str(len(models)) + "</b>",
+        "🆓 :free Variants: <b>" + str(variants) + "</b>",
+        "💠 Other Zero-Price Models: <b>" + str(len(models) - variants) + "</b>",
+        "",
+        "🟢 Added This Week: <b>" + str(unique("added")) + "</b>",
+        "🔴 Removed This Week: <b>" + str(unique("removed")) + "</b>",
+        "🔄 Changed This Week: <b>" + str(unique("changed")) + "</b>",
+        "",
+        "━━━━━━━━━━━━━━━━━━━━",
+        '🔗 <a href="' + CATALOG + '">View OpenRouter Free Models</a>',
+    ]
+    return "\n".join(lines) + footer()
+
 
 def send(message, dry_run=False):
     if dry_run:
