@@ -94,3 +94,7 @@ jobs:
           done
           echo "::error::Push failed after three attempts"
           exit 1
+      - name: Alert Telegram on scheduled failure
+        if: ${{ failure() && github.event_name == 'schedule' }}
+        continue-on-error: true
+        run: python scripts/notify_failure.py
