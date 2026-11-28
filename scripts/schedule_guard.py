@@ -15,6 +15,7 @@ from zoneinfo import ZoneInfo
 ROOT = Path(__file__).resolve().parents[1]
 RECEIPTS = ROOT / "data" / "schedule_receipts.json"
 TZ = ZoneInfo("Asia/Kolkata")
+START = Path(os.environ.get("RUNNER_TEMP", "/tmp")) / "free_model_schedule_start.json"
 
 
 def load_receipts():
@@ -68,8 +69,15 @@ def check():
         write_output("run_monitor", "false")
         summary(f"Scheduled backup skipped: daily report already completed for {today} IST.")
     else:
+        now = datetime.now(timezone.utc)
+        cron = os.environ.get("SCHEDULED_CRON", "").strip()
+        expected = scheduled_time(now, cron)
+        START.write_text(json.dumps({"actual_started_at_utc": now.isoformat(),
+                                     "expected_at_utc": expected.isoformat()}), encoding="utf-8")
         write_output("run_monitor", "true")
-        summary(f"Scheduled run allowed for {today} IST; no prior completion receipt.")
+        delay = max(0, round((now - expected).total_seconds() / 60, 1))
+        summary(f"Scheduled run started for {today} IST. Expected {expected.isoformat()}, "
+                f"observed {now.isoformat()}, GitHub scheduling delay ~{delay} minutes.")
 
 
 def mark():
@@ -80,7 +88,13 @@ def mark():
     today = now.astimezone(TZ).date().isoformat()
     cron = os.environ.get("SCHEDULED_CRON", "").strip()
     expected = scheduled_time(now, cron)
-    delay = max(0, round((now - expected).total_seconds() / 60, 1))
+    if START.exists():
+        start_data = json.loads(START.read_text(encoding="utf-8"))
+        started = datetime.fromisoformat(start_data["actual_started_at_utc"])
+    else:
+        started = now
+    delay = max(0, round((started - expected).total_seconds() / 60, 1))
+    completion_lag = max(0, round((now - expected).total_seconds() / 60, 1))
     state = load_receipts()
     days = state["days"]
     if today in days:
@@ -88,8 +102,10 @@ def mark():
     days[today] = {
         "date_ist": today,
         "expected_at_utc": expected.isoformat(),
+        "started_at_utc": started.isoformat(),
         "completed_at_utc": now.isoformat(),
-        "delay_minutes_to_completion": delay,
+        "delay_minutes_to_start": delay,
+        "delay_minutes_to_completion": completion_lag,
         "trigger_cron": cron,
         "github_run_id": os.getenv("GITHUB_RUN_ID", ""),
         "github_run_attempt": os.getenv("GITHUB_RUN_ATTEMPT", ""),
@@ -101,7 +117,8 @@ def mark():
     temp.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
     temp.replace(RECEIPTS)
     summary(f"Daily completion recorded: {today} IST; expected {expected.isoformat()}, "
-            f"completed {now.isoformat()}, delay to completion ~{delay} minutes.")
+            f"started {started.isoformat()}, completed {now.isoformat()}, "
+            f"start delay ~{delay} minutes, completion lag ~{completion_lag} minutes.")
 
 
 if __name__ == "__main__":
