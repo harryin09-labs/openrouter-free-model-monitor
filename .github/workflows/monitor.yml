@@ -39,17 +39,16 @@ jobs:
         run: |
           git fetch origin main
           git checkout -B main origin/main
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
       - name: Check scheduled delivery receipt
         id: receipt
         env:
           GITHUB_EVENT_NAME: ${{ github.event_name }}
           SCHEDULED_CRON: ${{ github.event.schedule }}
         run: python scripts/schedule_guard.py check
-      - name: Set up Python
-        if: steps.receipt.outputs.run_monitor == 'true'
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.12'
       - name: Unit tests
         if: steps.receipt.outputs.run_monitor == 'true'
         run: python -m unittest discover -s tests -v
